@@ -1,0 +1,23 @@
+***********************************
+README : Data Collector
+***********************************
+Prepared by: Satish Subhashrao Saley
+***********************************
+
+**Information**
+
+1. I have usered twitter4j API to collect tweets from twitter.
+2. I have collected tweets in JSON format and using API, I have extracted useful terms from it. 
+3. I have collected tweets which are related to 'love'.
+4. I have written a shell script which will run the java program collecting tweets from twitter. Further, using crontab, I have created a cron job. It downloads tweets at every 5 minutes.
+
+**Folder Contents**
+
+1. README.txt
+2. CollectDataScript.sh : Shell script to run the java code
+3. CollectTweets.java : Java code which collects tweets
+4. twitter4j-core-3.0.3.jar : Jar file of twitter4j API
+5. CollectTweets.class : Class file of CollectTweets.java
+6. smallData.txt : Small Data set 
+
+

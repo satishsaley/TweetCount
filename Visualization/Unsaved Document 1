@@ -1,0 +1,336 @@
+import java.awt.Color;
+import java.awt.FlowLayout;
+import java.awt.GridLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionListener;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.IOException;
+
+import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+
+
+public class TwitterDataUI {
+
+	/**
+	 * @param args
+	 */
+	public static void main(String[] args) {
+		// TODO Auto-generated method stub
+
+		File currentDirectory = new File("/home/cloudera/DIC_Twitter/InputFiles/"); 
+
+		File[] filesInSharedDir=currentDirectory.listFiles();
+
+		//String [] availableFiles=new String[100];
+		int sizeOfDir=0;
+		for (File f : filesInSharedDir) {
+			
+			sizeOfDir++;
+			System.out.println(f.getName());
+		}
+		
+		String[] availableFiles=new String[sizeOfDir];
+		int i=0;
+		
+		for (File f : filesInSharedDir) {
+			
+			availableFiles[i]=f.getName();
+			i++;
+		}
+		
+		final JLabel title=new JLabel("Data Intensive Computing on Twitter Data");
+		final JLabel jlabelInput=new JLabel("Input File:");
+		
+		final JLabel jlabelProgram=new JLabel("Program :");
+		final JButton jGo=new JButton("Calculate");
+		
+		@SuppressWarnings("rawtypes")
+		String[] items={"SimpleWordCount","HashTagCount","@Count"}; 
+		final JComboBox jcb_InputFiles=new JComboBox(availableFiles);
+		final JComboBox jcb_program=new JComboBox(items);
+		final JTextArea jta=new JTextArea(10, 23);
+		jta.setForeground(Color.GREEN);
+		JScrollPane sp = new JScrollPane(jta);
+		//jta.setText("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+		sp.setVisible(true);
+		DIC_TwitterFrame frame=new DIC_TwitterFrame();
+		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		title.setForeground(Color.BLUE);
+		
+		
+		frame.add(title);
+		
+	    frame.setLayout(new FlowLayout());
+	    
+	    frame.add(jlabelInput);
+	    frame.add(jcb_InputFiles);
+	    
+	    frame.add(jlabelProgram);
+	    frame.add(jcb_program);
+	    
+	    frame.add(jGo);
+	    frame.add(sp);
+	    jGo.addActionListener(new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				// TODO Auto-generated method stub
+				String fileSelected=jcb_InputFiles.getSelectedItem().toString().trim();
+				String programSelected=jcb_program.getSelectedItem().toString().trim();
+				String nameOfJarFile=null,nameOfIntermediateOutput=null,nameOfFinalOutput=null,nameOfFinalOutputOnLocalFS=null,nameOfClass=null,cmdToCopy=null;
+				
+				
+				if(programSelected.equals("SimpleWordCount"))
+				{
+					nameOfJarFile="SimpleWordCount.jar";
+					nameOfIntermediateOutput="IntermediateOutputSimpleWordCount";
+					nameOfFinalOutput="FinalOutputSimpleWordCount";
+					nameOfFinalOutputOnLocalFS="ResultSimpleWordCount";
+					nameOfClass="TweetCount";
+					cmdToCopy="./home/cloudera/DIC_Twitter/JavaFiles/HashTagCopyOutput.sh";
+				}
+				else if(programSelected.equals("HashTagCount"))
+				{
+					nameOfJarFile="HashWordCount.jar";
+					nameOfIntermediateOutput="IntermediateOutputHashWordCount";
+					nameOfFinalOutput="FinalOutputHashWordCount";
+					nameOfFinalOutputOnLocalFS="ResultHashWordCount";
+					nameOfClass="HashWordCount";
+					cmdToCopy="./home/cloudera/DIC_Twitter/JavaFiles/HashTagCopyOutput.sh";
+				}
+				else if(programSelected.equals("@Count"))
+				{
+					nameOfJarFile="AtTheRateWordCount.jar";
+					nameOfIntermediateOutput="IntermediateOutputAtTheRateWordCount";
+					nameOfFinalOutput="FinalOutputAtTheRateWordCount";
+					nameOfFinalOutputOnLocalFS="ResultAtTheRateWordCount";
+					nameOfClass="AtTheRateWordCount";
+					cmdToCopy="./home/cloudera/DIC_Twitter/JavaFiles/HashTagCopyOutput.sh";
+				}
+				else
+				{
+					System.out.println("exiting 1");
+					//System.exit(-1);
+				}
+					
+					//copy the files which user has selected to the hadoop fs
+					
+					ProcessingFrame processFrame=new ProcessingFrame();
+					
+					String cmd = "hadoop fs -put /home/cloudera/DIC_Twitter/InputFiles/"+fileSelected+" /user/cloudera/DIC_Twitter/Input ";
+					
+					Runtime run = Runtime.getRuntime();
+					
+					Process prCopying;
+					try {
+						
+						jta.append("1.Putting the selected file in HDFS\n");
+						new Thread({
+						prCopying = run.exec(cmd);
+						prCopying.waitFor();;
+						if(prCopying.exitValue()==0)
+						{
+							System.out.println("done 1");
+						     //jta.append("Operation Completed Successfully \n");
+						}
+						else
+						{
+							prCopying = run.exec("hadoop fs -rm /user/cloudera/DIC_Twitter/Input/*");
+							//jta.append("Some error has occured. Exiting. \n");
+							System.out.println("exiting 2");
+							System.exit(-1);
+						}
+						
+					} catch (Exception e1) {
+						
+						//jta.append("Exception. Exiting");
+						//System.exit(-1);
+						e1.printStackTrace();
+					}
+					
+					
+					
+					//run the jar file
+					cmd ="hadoop jar /home/cloudera/DIC_Twitter/JarFiles/"+nameOfJarFile+" com.satish.hadoop."+nameOfClass+" /user/cloudera/DIC_Twitter/Input/"+ fileSelected+" /user/cloudera/DIC_Twitter/"+nameOfIntermediateOutput;
+					
+					Process prRun;
+					try {
+						//jta.append("2.Calculating count.May take few minutes.\n");
+						prRun = run.exec(cmd);
+						prRun.waitFor();
+						if(prRun.exitValue()==0)
+						{
+							System.out.println("done 2");
+							//jta.append("Operation Completed Successfully \n");
+						}
+						else
+						{
+							prRun = run.exec("hadoop fs -rm /user/cloudera/DIC_Twitter/Input/*");
+							prRun = run.exec("hadoop fs -rm -r /user/cloudera/DIC_Twitter/"+nameOfIntermediateOutput);
+							//jta.append("Some error has occured. Exiting. \n");
+							System.out.println("exiting 3");
+							System.exit(-1);
+						}
+						
+					} catch (Exception e1) {
+						//jta.append("Exception. Exiting");
+						//System.exit(-1);
+						e1.printStackTrace();
+					}
+					
+					
+					
+					//sort intermediate results
+					Process prSort;
+										
+					cmd ="hadoop jar /home/cloudera/DIC_Twitter/JarFiles/SortingResults.jar com.satish.hadoop.SortingResults /user/cloudera/DIC_Twitter/"+nameOfIntermediateOutput+"/part* /user/cloudera/DIC_Twitter/"+nameOfFinalOutput;
+					
+					try {
+						//jta.append("3.Sorting the count.\n");
+						prSort = run.exec(cmd);
+						prSort.waitFor();
+						if(prSort.exitValue()==0)
+						{
+							System.out.println("done 3");
+							//jta.append("Operation Completed Successfully \n");
+						}
+						else
+						{
+							prSort = run.exec("hadoop fs -rm /user/cloudera/DIC_Twitter/Input/*");
+							prSort = run.exec("hadoop fs -rm -r /user/cloudera/DIC_Twitter/"+nameOfIntermediateOutput);
+							prSort = run.exec("hadoop fs -rm -r /user/cloudera/DIC_Twitter/"+nameOfFinalOutput);
+							//jta.append("Some error has occured. Exiting. \n");
+							System.out.println("exiting 4");
+							System.exit(-1);
+						}
+					} catch (Exception e1) {
+						//jta.setText("Exception. Exiting");
+						//System.exit(-1);
+						e1.printStackTrace();
+					}
+					
+					
+					
+					//copy the final output to local fs 
+//					cmd="rm /home/cloudera/DIC_Twitter/OutputFiles/ResultSimpleWordCount";
+//					Process prremove;
+//					try {
+//						//jta.setText("4.Removing Old Output File.\n");
+//						prremove = run.exec(cmd);
+//						prremove.waitFor();
+//						if(prremove.exitValue()==0)
+//						{
+//							//jta.setText("Operation Completed Successfully \n");
+//						}
+//						else
+//						{
+//							prremove = run.exec(cmd);
+//							prremove = run.exec("hadoop fs -rm /user/cloudera/DIC_Twitter/Input/*");
+//							prremove = run.exec("hadoop fs -rm -r /user/cloudera/DIC_Twitter/IntermediateOutputSimpleWordCount");
+//							prremove = run.exec("hadoop fs -rm -r /user/cloudera/DIC_Twitter/FinalOutputSimpleWordCount");
+//							//jta.setText("Some error has occured. Exiting. \n");
+//							System.exit(-1);
+//						}
+//						
+//					} catch (Exception e1) {
+//						//jta.setText("Exception. Exiting");
+//						System.exit(-1);
+//						e1.printStackTrace();
+//					}
+//					
+					
+					//copying output to local disk
+					//cmd="hadoop fs -cat /user/cloudera/DIC_Twitter/"+nameOfFinalOutput+"/part* > /home/cloudera/DIC_Twitter/OutputFiles/"+nameOfFinalOutputOnLocalFS;
+					
+					
+					
+					
+					
+					cmd="hadoop fs -copyToLocal /user/cloudera/DIC_Twitter/"+nameOfFinalOutput+"/part* /home/cloudera/DIC_Twitter/OutputFiles/"+nameOfFinalOutputOnLocalFS;
+					
+					
+					Process prCopyOutput;
+					try {
+						//jta.append("5.Copying Output to Local File System from HDFS.\n");
+						Process prremoveOutput = run.exec("rm -r /home/cloudera/DIC_Twitter/OutputFiles/"+nameOfFinalOutputOnLocalFS);
+						prremoveOutput.waitFor();
+						prCopyOutput = run.exec(cmd);
+						prCopyOutput.waitFor();
+						if(prCopyOutput.exitValue()==0)
+						{
+							System.out.println("done 4");
+							//jta.append("Operation Completed Successfully \n");
+						}
+						else
+						{
+							//prCopyOutput = run.exec(cmd);
+							prCopyOutput = run.exec("hadoop fs -rm /user/cloudera/DIC_Twitter/Input/*");
+							prCopyOutput = run.exec("hadoop fs -rm -r /user/cloudera/DIC_Twitter/"+nameOfIntermediateOutput);
+							prCopyOutput = run.exec("hadoop fs -rm -r /user/cloudera/DIC_Twitter/"+nameOfFinalOutput);
+							//jta.append("Some error has occured. Exiting. \n");
+							System.out.println("exiting 5" + prCopyOutput.getErrorStream());
+							System.exit(-1);
+						}
+						
+					} catch (Exception e1) {
+						//jta.append("Exception. Exiting");
+						//System.exit(-1);
+						e1.printStackTrace();
+					}
+
+					
+					//delete files and folders
+					
+					cmd="hadoop fs -rm -r /user/cloudera/DIC_Twitter/"+nameOfIntermediateOutput;
+					Process prDelete1;
+					try {
+						//jta.append("6.Deleting files from HDFS.\n");
+						prDelete1 = run.exec(cmd);
+						prDelete1.waitFor();
+						
+						cmd="hadoop fs -rm -r /user/cloudera/DIC_Twitter/"+nameOfIntermediateOutput;
+						Process prDelete2 = run.exec(cmd);
+						prDelete2.waitFor();
+						
+						cmd="hadoop fs -rm /user/cloudera/DIC_Twitter/Input/*";
+						Process prDelete3 = run.exec(cmd);
+						prDelete3.waitFor();
+						if(prDelete1.exitValue()==0 ||prDelete2.exitValue()==0||prDelete3.exitValue()==0)
+						{
+							System.out.println("done 5");
+							//jta.append("Operation Completed Successfully \n");
+						}
+						else
+						{
+							//prCopyOutput = run.exec(cmd);
+							prDelete1 = run.exec("hadoop fs -rm /user/cloudera/DIC_Twitter/Input/*");
+							prDelete2 = run.exec("hadoop fs -rm -r /user/cloudera/DIC_Twitter/"+nameOfIntermediateOutput);
+							prDelete3 = run.exec("hadoop fs -rm -r /user/cloudera/DIC_Twitter/"+nameOfFinalOutput);
+							//jta.append("Some error has occured. Exiting. \n");
+							System.out.println("exiting 6");
+							System.exit(-1);
+						}
+					} catch (Exception e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					}
+					processFrame.dispose();
+				}
+		
+
+		});
+		
+	}
+
+}
+

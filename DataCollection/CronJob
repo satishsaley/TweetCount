@@ -1,0 +1,1 @@
+*/5 * * * * /home/cloudera/DIC_Twitter/DataCollection/CollectDataScript.sh

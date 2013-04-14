@@ -1,0 +1,92 @@
+adb -s emulator-5554 shell
+sqlite3 
+
+adb -s emulator-5554 uninstall edu.buffalo.cse.cse486586.simpledht
+adb -s emulator-5558 uninstall edu.buffalo.cse.cse486586.simpledht
+adb -s emulator-5556 uninstall edu.buffalo.cse.cse486586.simpledht
+
+
+if(SimpleDhtMainActivity.whoAmI.equals("5556"))
+			{
+				try {
+					if((hashOfKey.compareTo(genHash(provider.predecessor)))>0
+							&&(hashOfKey.compareTo(genHash(provider.successor)))>0
+							)
+					{
+						dbWritable.delete(TableSimpleDHT.tableSimpleDht, "tableSimpleDht.key='"+values.get("key")+"'", null);
+						id=	dbWritable.insert(TableSimpleDHT.tableSimpleDht, null, values);    
+						
+					}
+				} catch (NoSuchAlgorithmException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+			else
+			{
+			try {
+				Log.v("Compare to me ",hashOfKey.compareTo(SimpleDhtMainActivity.hash_whoAmI) +"");
+				Log.v("Compare to PREDE ",hashOfKey.compareTo(genHash(provider.predecessor)) +"");
+
+				if(((hashOfKey.compareTo(SimpleDhtMainActivity.hash_whoAmI)<=0) 
+						//|| (hashOfKey.compareTo(genHash(provider.predecessor))>0) 
+						//&& (hashOfKey.compareTo(genHash(provider.successor))<0)
+						) || iGotMyOwn==true )
+				{
+					//Key is less than the node. So store this key here only
+					if(SimpleDhtMainActivity.whoAmI.equals("5556")==false && iGotMyOwn==true)
+					{
+						MessageDHT msg=new  MessageDHT();
+						msg.setMessageType("NOT_FITTING_KEY");
+						msg.setMessageReceiver("5556");
+						msg.setMessageSender(SimpleDhtMainActivity.whoAmI);
+						msg.setKey(values.get("key").toString());
+						msg.setValue(values.get("value").toString());
+						
+						new SendReplyMessage().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, msg);
+					}
+					
+					Log.v("Provider "," writing "+ values.get("key"));
+					dbWritable.delete(TableSimpleDHT.tableSimpleDht, "tableSimpleDht.key='"+values.get("key")+"'", null);
+					id=	dbWritable.insert(TableSimpleDHT.tableSimpleDht, null, values);    
+				}
+//				else if((hashOfKey.compareTo(genHash(provider.predecessor))<=0))
+//				{
+//					//send it to predecessor
+//					MessageDHT message=new MessageDHT();
+//					message.setMessageType("FORWARDED_KEY");
+//					message.setMessageID((int)Math.random()*100);
+//					message.setKey(values.get("key").toString());
+//					message.setValue(values.get("value").toString());
+//					message.setMessageSender(SimpleDhtMainActivity.whoAmI);
+//
+//					message.setMessageReceiver(provider.predecessor);
+//					Log.v("Provider "," Forwarding "+ message.getKey() +"to "+provider.predecessor);
+//					new SendReplyMessage().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, message);
+//
+//				}
+				else
+				{
+					/*
+					 * forward that key to successor.
+					 * Now we have to create a message here and send that message.
+					 * 
+					 */
+					//Log.v("Provider ", "indide else forwarding key");
+					
+					sentValues.put(hashOfKey, values.get("key").toString());
+					MessageDHT message=new MessageDHT();
+					message.setMessageType("FORWARDED_KEY");
+					message.setMessageID((int)Math.random()*100);
+					message.setKey(values.get("key").toString());
+					message.setValue(values.get("value").toString());
+					message.setMessageSender(SimpleDhtMainActivity.whoAmI);
+
+					message.setMessageReceiver(provider.successor);
+					Log.v("Provider "," Forwarding "+ message.getKey() +"to "+provider.successor);
+					new SendReplyMessage().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, message);
+				}
+			} catch (NoSuchAlgorithmException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
